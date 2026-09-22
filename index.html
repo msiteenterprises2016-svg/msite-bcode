@@ -15,6 +15,8 @@ header{background:linear-gradient(135deg,var(--d),var(--p));color:#fff;padding:1
 .layout{display:flex;min-height:calc(100vh - 72px)}aside{width:245px;background:#fff;border-right:1px solid var(--line);padding:14px 10px}nav button{width:100%;text-align:left;border:0;background:transparent;color:var(--tx);margin:3px 0;padding:12px 13px}nav button.active,nav button:hover{background:#e9f2fb;color:var(--p)}
 main{flex:1;padding:22px;max-width:1550px;width:100%;margin:auto}.page{display:none}.page.active{display:block}.title{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}h1{font-size:25px;margin:0}h2{font-size:18px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:13px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:17px;box-shadow:0 3px 12px #173b5d0b}.metric{font-size:25px;font-weight:900;color:var(--p);margin-top:6px}.muted{font-size:13px;color:var(--muted)}
 .formgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.full{grid-column:1/-1}label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:0 0 5px}input,select{width:100%;padding:10px;border:1px solid #cbd6e2;border-radius:8px;background:#fff}.toolbar,.actions{display:flex;gap:8px;flex-wrap:wrap}.toolbar>*{flex:1;min-width:160px}
+.pos-code-row{display:flex;gap:8px;align-items:stretch}.pos-code-row input{flex:1;min-width:0}.pos-add-btn{min-width:90px;white-space:nowrap}
+@media(max-width:480px){.pos-code-row{gap:6px}.pos-add-btn{min-width:78px;padding:10px 12px}}
 .tablewrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:850px}th{background:var(--d);color:#fff;text-align:left;padding:11px;font-size:12px}td{padding:10px;border-bottom:1px solid #e8edf2;font-size:13px;vertical-align:top}.badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#e9f2fb;color:var(--p);font-size:11px;font-weight:800}.low{background:#fff0ed;color:var(--danger)}.ok{background:#eaf8f0;color:var(--ok)}
 .modal{position:fixed;inset:0;background:#051a2b99;display:none;align-items:center;justify-content:center;padding:16px;z-index:30}.modal.open{display:flex}.modalbox{background:#fff;border-radius:15px;padding:20px;max-width:760px;width:100%;max-height:94vh;overflow:auto}.receipt{font-family:Arial,sans-serif;max-width:420px;margin:auto;background:#fff;padding:15px}.cartline{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid #e6edf3}.total{font-size:26px;font-weight:900;color:var(--p)}.notice{padding:10px;border-radius:9px;background:#eef7ff;border:1px solid #cde4f7;font-size:13px}.dangerText{color:var(--danger);font-weight:800}
 .kpi{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #edf1f5}.kpi:last-child{border:0}.hidden{display:none!important}
@@ -59,7 +61,14 @@ main{flex:1;padding:22px;max-width:1550px;width:100%;margin:auto}.page{display:n
 <div class="title"><h1>Point of Sale</h1><div class="actions"><button onclick="focusBarcode()">⌕ Barcode / SKU</button><button class="secondary" onclick="clearCart()">Clear Cart</button></div></div>
 <div class="card">
 <div class="formgrid">
-<div class="full"><label>Scan barcode or enter SKU</label><input id="posCode" autofocus placeholder="Use a USB barcode scanner or type barcode/SKU" onkeydown="if(event.key==='Enter'){addCode()}"></div>
+<div class="full">
+  <label>Scan barcode or enter SKU</label>
+  <div class="pos-code-row">
+    <input id="posCode" autofocus placeholder="Type barcode / SKU" onkeydown="if(event.key==='Enter'){addCode()}">
+    <button type="button" onclick="addCode()" class="pos-add-btn">Add</button>
+  </div>
+  <div class="muted" style="margin-top:6px">On mobile, type the SKU/barcode then tap <b>Add</b>.</div>
+</div>
 <div><label>Quantity</label><input id="posQty" type="number" min="1" value="1"></div>
 <div><label>Customer</label><input id="customer" placeholder="Walk-in Customer"></div>
 <div><label>Payment Method</label><select id="payMethod"><option>Cash</option><option>GCash</option><option>Bank Transfer</option><option>Card</option><option>Credit / AR</option></select></div>
@@ -166,7 +175,23 @@ function renderProducts(){
  document.getElementById('productRows').innerHTML=rows.map(p=>`<tr><td><b>${esc(p.sku)}</b><br><span class="badge">${esc(p.barcode||'No barcode')}</span></td><td>${esc(p.name)}<br><span class="muted">${esc(p.supplier)}</span></td><td>${esc(p.category)}</td><td>${money(p.cost)}</td><td>${money(p.price)}</td><td><span class="${p.stock<=p.reorder?'badge low':'badge ok'}">${p.stock} ${esc(p.unit)}</span></td><td>${p.reorder}</td><td><div class="actions"><button onclick="openProduct('${p.id}')">Edit</button><button class="danger" onclick="deleteProduct('${p.id}')">Delete</button></div></td></tr>`).join('')||'<tr><td colspan="8">No products found.</td></tr>';
  let cats=[...new Set(db.products.map(p=>p.category).filter(Boolean))].sort();catFilter.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');catFilter.value=cat
 }
-function addCode(){let code=posCode.value.trim(),qty=+posQty.value||1,p=findProduct(code);if(!p)return alert('Product not found. Add it to Product Master first.');if(qty<1||qty>p.stock)return alert('Insufficient stock. Available: '+p.stock);let i=cart.find(x=>x.id===p.id);if(i){if(i.qty+qty>p.stock)return alert('Insufficient stock.');i.qty+=qty}else cart.push({id:p.id,name:p.name,price:p.price,cost:p.cost,qty,unit:p.unit});posCode.value='';posQty.value=1;renderCart();posCode.focus()}
+function addCode(){
+  let code=posCode.value.trim(),qty=+posQty.value||1,p=findProduct(code);
+  if(!code)return alert('Enter a SKU or barcode first.');
+  if(!p)return alert('Product not found. Add it to Product Master first.');
+  if(qty<1||qty>p.stock)return alert('Insufficient stock. Available: '+p.stock);
+  let i=cart.find(x=>x.id===p.id);
+  if(i){
+    if(i.qty+qty>p.stock)return alert('Insufficient stock.');
+    i.qty+=qty;
+  }else{
+    cart.push({id:p.id,name:p.name,price:p.price,cost:p.cost,qty,unit:p.unit});
+  }
+  posCode.value='';
+  posQty.value=1;
+  renderCart();
+  posCode.focus();
+}
 function renderCart(){cart.innerHTML;document.getElementById('cart').innerHTML=cart.length?cart.map((i,n)=>`<div class="cartline"><div><b>${esc(i.name)}</b><div class="muted">${i.qty} × ${money(i.price)}</div></div><input style="width:80px" type="number" min="1" value="${i.qty}" onchange="setCartQty(${n},this.value)"><div><b>${money(i.qty*i.price)}</b><br><button class="danger" onclick="cart.splice(${n},1);renderCart()">Remove</button></div></div>`).join(''):'<p class="muted">Cart is empty.</p>';document.getElementById('cartTotal').textContent=money(cart.reduce((s,i)=>s+i.qty*i.price,0))}
 function setCartQty(n,v){let q=+v||1,p=db.products.find(x=>x.id===cart[n].id);if(q>p.stock)return alert('Insufficient stock.');cart[n].qty=q;renderCart()}
 function clearCart(){cart=[];renderCart()}
